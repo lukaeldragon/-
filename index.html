@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Daily Check · 우리만의 점검표</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <script src="https://www.gstatic.com/firebasejs/13.3.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/13.3.0/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --bg: #f3f5f9;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --text: #0f172a;
+      --text-sub: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+
+      --prayer: #6366f1;
+      --prayer-bg: #eef2ff;
+      --meditation: #0d9488;
+      --meditation-bg: #f0fdfa;
+      --study: #ea580c;
+      --study-bg: #fff7ed;
+      --clear: #10b981;
+      --clear-bg: #ecfdf5;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 18px 14px 56px;
+      line-height: 1.4;
+    }
+
+    .hidden { display: none !important; }
+
+    /* 비공개 잠금화면 */
+    .lock-screen {
+      min-height: 82vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lock-card {
+      width: 100%;
+      max-width: 390px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 22px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      text-align: center;
+    }
+    .lock-icon {
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 14px;
+      border-radius: 16px;
+      background: #0f172a;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .lock-card h2 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+    .lock-card p {
+      margin: 0 0 18px;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+    .pw-wrap {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .pw-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      background: var(--surface-soft);
+      border-radius: 14px;
+      padding: 12px 44px 12px 14px;
+      font-family: inherit;
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .pw-input:focus { outline: none; border-color: var(--prayer); background: #fff; }
+    .pw-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 1.05rem;
+      color: var(--text-sub);
+    }
+    .enter-btn {
+      width: 100%;
+      border: none;
+      background: #0f172a;
+      color: #fff;
+      padding: 13px;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 0.96rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .enter-btn:hover { background: #1e293b; }
+    .lock-note {
+      margin-top: 12px !important;
+      font-size: 0.77rem !important;
+      color: var(--text-sub);
+    }
+
+    .app {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    /* 헤더 */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 4px 2px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 0.82rem;
+      color: var(--text-sub);
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+      white-space: nowrap;
+    }
+    .sync-badge.live {
+      background: var(--clear-bg);
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+    .sync-badge.live .pulse-dot {
+      background: var(--clear);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+    }
+    .lock-out-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-sub);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .lock-out-btn:hover { background: #f1f5f9; color: var(--text); }
+
+    /* 메인 탭 */
+    .main-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+    .main-tab {
+      border: none;
+      background: transparent;
+      padding: 10px 12px;
+      border-radius: 11px;
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .main-tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 상단 요약 카드 */
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .date-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .date-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon-btn {
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      color: var(--text);
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { background: #eef2f7; }
+    .today-btn {
+      border: none;
+      background: #0f172a;
+      color: #fff;
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .date-input {
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .progress-wrap { margin-bottom: 12px; }
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .progress-label { font-size: 0.84rem; font-weight: 700; color: var(--text-sub); }
+    .progress-value { font-size: 0.95rem; font-weight: 800; color: var(--text); }
+    .progress-value.all { color: var(--clear); }
+    .progress-track {
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .mini-avatars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .mini-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 9px;
+      border-radius: 10px;
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .mini-chip.done {
+      background: var(--clear-bg);
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+    .mini-chip-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 65%;
+    }
+
+    /* 보기 필터 */
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-pill {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-sub);
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .filter-pill.active {
+      background: #0f172a;
+      color: #fff;
+      border-color: #0f172a;
+    }
+
+    /* 멤버 카드 */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .cards-grid.single {
+      grid-template-columns: 1fr;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    @media (max-width: 680px) {
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+
+    .member-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .member-card.all-done {
+      border-color: #6ee7b7;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.1);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .profile { display: flex; align-items: center; gap: 10px; }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #fff;
+    }
+    .av-0 { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .av-1 { background: linear-gradient(135deg, #0d9488, #10b981); }
+    .av-2 { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+    .av-3 { background: linear-gradient(135deg, #ec4899, #f43f5e); }
+
+    .name-wrap { display: flex; align-items: center; gap: 5px; }
+    .member-name { font-size: 1.05rem; font-weight: 800; }
+    .edit-name-btn {
+      border: none;
+      background: var(--surface-soft);
+      color: var(--text-sub);
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .edit-name-btn:hover { background: #e2e8f0; color: var(--text); }
+
+    .status-tag {
+      font-size: 0.76rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+    }
+    .status-tag.done {
+      background: var(--clear-bg);
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .task-btn {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      background: var(--surface-soft);
+      border-radius: 14px;
+      padding: 11px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      transition: all 0.16s ease;
+    }
+    .task-btn:active { transform: scale(0.985); }
+    .task-left { display: flex; align-items: center; gap: 11px; }
+    .task-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      border: 1px solid var(--border);
+    }
+    .task-title { font-size: 0.94rem; font-weight: 800; color: var(--text); display: block; }
+    .task-sub { font-size: 0.75rem; color: var(--text-sub); display: block; }
+    .check-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: transparent;
+      background: #fff;
+    }
+
+    .task-btn[data-task="prayer"].checked { background: var(--prayer-bg); border-color: #a5b4fc; }
+    .task-btn[data-task="prayer"].checked .check-circle { background: var(--prayer); border-color: var(--prayer); color: #fff; }
+    .task-btn[data-task="meditation"].checked { background: var(--meditation-bg); border-color: #99f6e4; }
+    .task-btn[data-task="meditation"].checked .check-circle { background: var(--meditation); border-color: var(--meditation); color: #fff; }
+    .task-btn[data-task="study"].checked { background: var(--study-bg); border-color: #fed7aa; }
+    .task-btn[data-task="study"].checked .check-circle { background: var(--study); border-color: var(--study); color: #fff; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding-top: 12px;
+      border-top: 1px solid #f1f5f9;
+    }
+    .stat-pill {
+      background: var(--surface-soft);
+      border-radius: 10px;
+      padding: 7px 4px;
+      text-align: center;
+    }
+    .stat-pill span { display: block; font-size: 0.7rem; font-weight: 700; color: var(--text-sub); }
+    .stat-pill strong { font-size: 0.95rem; font-weight: 800; }
+    .stat-pill.p strong { color: var(--prayer); }
+    .stat-pill.m strong { color: var(--meditation); }
+    .stat-pill.s strong { color: var(--study); }
+    .stat-pill.a { background: var(--clear-bg); }
+    .stat-pill.a strong { color: #047857; }
+
+    /* 달력 */
+    .cal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .cal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .cal-month-title { font-size: 1.15rem; font-weight: 800; margin: 0 6px; }
+    .cal-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cal-stat-badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+    }
+    .cal-stat-badge.highlight {
+      background: var(--clear-bg);
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .cal-wd { text-align: center; font-size: 0.76rem; font-weight: 700; color: var(--text-sub); padding: 6px 0; }
+    .cal-cell {
+      min-height: 66px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      background: #fff;
+    }
+    .cal-cell.empty { border: none; background: transparent; cursor: default; }
+    .cal-cell.today { border: 2px solid #0f172a; }
+    .cal-cell.selected { box-shadow: 0 0 0 2px var(--prayer); }
+    .cal-cell.all-clear {
+      background: linear-gradient(145deg, #ecfdf5, #d1fae5);
+      border-color: #34d399;
+    }
+    .cal-day-num { font-size: 0.84rem; font-weight: 800; }
+    .cal-clear-tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      background: #059669;
+      color: #fff;
+      border-radius: 6px;
+      padding: 2px 4px;
+      text-align: center;
+    }
+    .cal-part-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      background: var(--surface-soft);
+      border-radius: 6px;
+      padding: 2px 4px;
+      text-align: center;
+    }
+    .cal-detail {
+      margin-top: 16px;
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .cal-detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .cal-detail-title { font-size: 0.96rem; font-weight: 800; }
+    .detail-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    @media (max-width: 560px) { .detail-list { grid-template-columns: 1fr; } }
+    .detail-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .detail-chips { display: flex; gap: 4px; }
+    .d-chip {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #94a3b8;
+    }
+    .d-chip.p.on { background: var(--prayer-bg); color: var(--prayer); }
+    .d-chip.m.on { background: var(--meditation-bg); color: var(--meditation); }
+    .d-chip.s.on { background: var(--study-bg); color: var(--study); }
+
+    /* 이름 수정 모달 */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: #fff;
+      width: 100%;
+      max-width: 340px;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+    }
+    .modal-box h3 { margin: 0 0 12px; font-size: 1.05rem; }
+    .modal-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-cancel {
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-save {
+      border: none;
+      background: #0f172a;
+      color: #fff;
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- 1) 비공개 잠금 화면 -->
+  <div class="lock-screen" id="lockScreen">
+    <div class="lock-card">
+      <div class="lock-icon">🔒</div>
+      <h2>우리 팀 전용 점검표</h2>
+      <p>4명이 함께 정한 비밀코드를 입력하세요.<br/>한 번 입력하면 이 기기에서는 바로 열립니다.</p>
+      <div class="pw-wrap">
+        <input type="password" class="pw-input" id="roomCodeInput" placeholder="예: prayer7788!" autocomplete="off" />
+        <button type="button" class="pw-toggle" onclick="togglePwVisible()">👁️</button>
+      </div>
+      <button type="button" class="enter-btn" onclick="submitRoomCode()">입장하기</button>
+      <p class="lock-note">로그인·회원가입 없이 비밀코드가 같은 4명만 연결됩니다.</p>
+    </div>
+  </div>
+
+  <!-- 2) 메인 점검표 화면 -->
+  <div class="app hidden" id="mainApp">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Daily Check</h1>
+        <p>기도 · 묵상 · 학습(수업·동영상 포함)</p>
+      </div>
+      <div class="top-actions">
+        <div class="sync-badge" id="syncBadge">
+          <span class="pulse-dot"></span>
+          <span id="syncText">로컬 체험 모드</span>
+        </div>
+        <button class="lock-out-btn" onclick="lockOut()" title="잠금화면으로 돌아가기">🔒 잠금</button>
+      </div>
+    </header>
+
+    <div class="main-tabs">
+      <button class="main-tab active" onclick="switchTab('check')">✅ 오늘 점검표</button>
+      <button class="main-tab" onclick="switchTab('calendar')">📅 전원 완료 달력</button>
+    </div>
+
+    <section id="panel-check" class="panel active">
+      <div class="summary-card">
+        <div class="date-row">
+          <div class="date-controls">
+            <button class="icon-btn" onclick="moveDate(-1)">‹</button>
+            <input type="date" class="date-input" id="datePicker" onchange="pickDate(this.value)" />
+            <button class="icon-btn" onclick="moveDate(1)">›</button>
+          </div>
+          <button class="today-btn" onclick="goToday()">오늘로 이동</button>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-head">
+            <span class="progress-label">함께 채우는 목표</span>
+            <span class="progress-value" id="progressText">0 / 12 완료</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="mini-avatars" id="miniAvatars"></div>
+      </div>
+
+      <div class="filter-bar" id="filterBar"></div>
+      <div class="cards-grid" id="cardsGrid"></div>
+    </section>
+
+    <section id="panel-calendar" class="panel">
+      <div class="cal-card">
+        <div class="cal-top">
+          <div class="date-controls">
+            <button class="icon-btn" onclick="moveMonth(-1)">‹</button>
+            <span class="cal-month-title" id="calTitle"></span>
+            <button class="icon-btn" onclick="moveMonth(1)">›</button>
+            <button class="today-btn" onclick="goThisMonth()">이번 달</button>
+          </div>
+          <div class="cal-badges">
+            <span class="cal-stat-badge highlight" id="monthClearBadge">이번 달 전원 완료 0일</span>
+            <span class="cal-stat-badge" id="totalClearBadge">누적 전원 완료 0일</span>
+          </div>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-detail" id="calDetail"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 이름 수정 모달 -->
+  <div class="modal-backdrop" id="nameModal">
+    <div class="modal-box">
+      <h3>이름 변경</h3>
+      <input type="text" class="modal-input" id="modalNameInput" maxlength="12" placeholder="이름을 입력하세요" />
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeNameModal()">취소</button>
+        <button class="btn-save" onclick="saveModalName()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // [실시간 공유 설정] 아래 큰따옴표 안에 Firebase Realtime Database 주소를 넣으세요!
+    // =========================================================================
+    const FIREBASE_DB_URL = "";
+
+    const SAVED_ROOM_HASH_KEY = "daily_check_secret_room_hash_v1";
+    const LOCAL_KEY_PREFIX = "daily_check_local_v1_";
+    const FILTER_KEY = "daily_check_filter_v2";
+    const TASKS = [
+      { key: "prayer", title: "기도", sub: "오늘의 기도", icon: "🙏" },
+      { key: "meditation", title: "묵상", sub: "말씀 묵상", icon: "📖" },
+      { key: "study", title: "학습", sub: "수업 · 동영상 포함", icon: "💻" }
+    ];
+    const DEFAULT_MEMBERS = ["멤버 1", "멤버 2", "멤버 3", "멤버 4"];
+
+    function getDateKey(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    function parseKey(key) {
+      const [y, m, d] = key.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    // 비밀코드 -> 추측 불가능한 64자리 방 ID 변환
+    async function hashRoomCode(code) {
+      const text = "team4_private::" + code.trim();
+      if (window.crypto && window.crypto.subtle) {
+        const buf = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      }
+      // file:// 테스트용 폴백
+      let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+      }
+      return (h1 >>> 0).toString(16) + (h2 >>> 0).toString(16);
+    }
+
+    const todayKey = getDateKey(new Date());
+    let currentDateKey = todayKey;
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+    let selectedCalDate = todayKey;
+    let viewFilter = localStorage.getItem(FILTER_KEY) || "all";
+    let editingMemberIdx = null;
+    let currentRoomHash = null;
+    let dbRef = null;
+
+    let state = { members: [...DEFAULT_MEMBERS], records: {} };
+    const isLiveMode = Boolean(FIREBASE_DB_URL && FIREBASE_DB_URL.startsWith("http"));
+
+    function togglePwVisible() {
+      const inp = document.getElementById("roomCodeInput");
+      inp.type = inp.type === "password" ? "text" : "password";
+    }
+
+    async function submitRoomCode() {
+      const raw = document.getElementById("roomCodeInput").value.trim();
+      if (raw.length < 4) {
+        alert("보안을 위해 비밀코드를 4글자 이상 입력해주세요.");
+        return;
+      }
+      const hashed = await hashRoomCode(raw);
+      localStorage.setItem(SAVED_ROOM_HASH_KEY, hashed);
+      document.getElementById("roomCodeInput").value = "";
+      enterRoom(hashed);
+    }
+
+    document.getElementById("roomCodeInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitRoomCode();
+    });
+
+    function lockOut() {
+      if (dbRef) { dbRef.off(); dbRef = null; }
+      localStorage.removeItem(SAVED_ROOM_HASH_KEY);
+      currentRoomHash = null;
+      document.getElementById("mainApp").classList.add("hidden");
+      document.getElementById("lockScreen").classList.remove("hidden");
+    }
+
+    function enterRoom(roomHash) {
+      currentRoomHash = roomHash;
+      document.getElementById("lockScreen").classList.add("hidden");
+      document.getElementById("mainApp").classList.remove("hidden");
+
+      if (dbRef) { dbRef.off(); dbRef = null; }
+      state = { members: [...DEFAULT_MEMBERS], records: {} };
+
+      if (isLiveMode) {
+        try {
+          if (!firebase.apps.length) {
+            firebase.initializeApp({ databaseURL: FIREBASE_DB_URL });
+          }
+          dbRef = firebase.database().ref(`rooms/${roomHash}`);
+          const badge = document.getElementById("syncBadge");
+          badge.classList.add("live");
+          document.getElementById("syncText").textContent = "비공개 실시간 공유";
+
+          dbRef.on("value", (snap) => {
+            const val = snap.val() || {};
+            state.members = [0, 1, 2, 3].map(i => (val.members && val.members[i]) ? val.members[i] : DEFAULT_MEMBERS[i]);
+            state.records = val.records || {};
+            renderAll();
+          });
+          return;
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_KEY_PREFIX + roomHash));
+        if (saved) {
+          state.members = [0, 1, 2, 3].map(i => (saved.members && saved.members[i]) || DEFAULT_MEMBERS[i]);
+          state.records = saved.records || {};
+        }
+      } catch (e) {}
+      renderAll();
+    }
+
+    function saveLocal() {
+      if (!currentRoomHash) return;
+      localStorage.setItem(LOCAL_KEY_PREFIX + currentRoomHash, JSON.stringify(state));
+    }
+
+    function getRec(dateKey, idx) {
+      const day = state.records[dateKey];
+      if (!day || !day[idx]) return { prayer: false, meditation: false, study: false };
+      return { prayer: !!day[idx].prayer, meditation: !!day[idx].meditation, study: !!day[idx].study };
+    }
+
+    function toggleTask(idx, taskKey) {
+      const next = !getRec(currentDateKey, idx)[taskKey];
+      if (!state.records[currentDateKey]) state.records[currentDateKey] = {};
+      if (!state.records[currentDateKey][idx]) state.records[currentDateKey][idx] = {};
+      state.records[currentDateKey][idx][taskKey] = next;
+
+      if (dbRef) dbRef.child(`records/${currentDateKey}/${idx}/${taskKey}`).set(next);
+      else saveLocal();
+      renderAll();
+    }
+
+    function openNameModal(idx) {
+      editingMemberIdx = idx;
+      const input = document.getElementById("modalNameInput");
+      input.value = state.members[idx];
+      document.getElementById("nameModal").classList.add("open");
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function closeNameModal() {
+      document.getElementById("nameModal").classList.remove("open");
+      editingMemberIdx = null;
+    }
+
+    function saveModalName() {
+      if (editingMemberIdx === null) return;
+      const val = document.getElementById("modalNameInput").value.trim() || DEFAULT_MEMBERS[editingMemberIdx];
+      state.members[editingMemberIdx] = val;
+      if (dbRef) dbRef.child(`members/${editingMemberIdx}`).set(val);
+      else saveLocal();
+      closeNameModal();
+      renderAll();
+    }
+
+    document.getElementById("modalNameInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") saveModalName();
+      if (e.key === "Escape") closeNameModal();
+    });
+
+    function getStats(idx) {
+      let p = 0, m = 0, s = 0, a = 0;
+      Object.values(state.records).forEach(day => {
+        if (!day || !day[idx]) return;
+        const r = day[idx];
+        if (r.prayer) p++;
+        if (r.meditation) m++;
+        if (r.study) s++;
+        if (r.prayer && r.meditation && r.study) a++;
+      });
+      return { p, m, s, a };
+    }
+
+    function getDayCount(dateKey) {
+      let total = 0;
+      for (let i = 0; i < 4; i++) {
+        const r = getRec(dateKey, i);
+        if (r.prayer) total++;
+        if (r.meditation) total++;
+        if (r.study) total++;
+      }
+      return total;
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll(".main-tab").forEach((el, i) => {
+        el.classList.toggle("active", (tab === "check" && i === 0) || (tab === "calendar" && i === 1));
+      });
+      document.getElementById("panel-check").classList.toggle("active", tab === "check");
+      document.getElementById("panel-calendar").classList.toggle("active", tab === "calendar");
+      if (tab === "calendar") renderCalendar();
+    }
+
+    function moveDate(delta) {
+      const d = parseKey(currentDateKey);
+      d.setDate(d.getDate() + delta);
+      currentDateKey = getDateKey(d);
+      renderCheckTab();
+    }
+    function pickDate(val) { if (val) { currentDateKey = val; renderCheckTab(); } }
+    function goToday() { currentDateKey = getDateKey(new Date()); renderCheckTab(); }
+
+    function setFilter(val) {
+      viewFilter = String(val);
+      localStorage.setItem(FILTER_KEY, viewFilter);
+      renderCheckTab();
+    }
+
+    function renderCheckTab() {
+      document.getElementById("datePicker").value = currentDateKey;
+      const totalDone = getDayCount(currentDateKey);
+      const pct = Math.round((totalDone / 12) * 100);
+      const pText = document.getElementById("progressText");
+      pText.textContent = totalDone === 12 ? "👑 전원 완료! (12 / 12)" : `${totalDone} / 12 완료 (${pct}%)`;
+      pText.classList.toggle("all", totalDone === 12);
+      document.getElementById("progressFill").style.width = `${pct}%`;
+
+      document.getElementById("miniAvatars").innerHTML = state.members.map((name, idx) => {
+        const r = getRec(currentDateKey, idx);
+        const cnt = (r.prayer ? 1 : 0) + (r.meditation ? 1 : 0) + (r.study ? 1 : 0);
+        const done = cnt === 3;
+        return `
+          <div class="mini-chip ${done ? "done" : ""}" onclick="setFilter(${idx})">
+            <span class="mini-chip-name">${esc(name)}</span>
+            <span>${done ? "✓" : `${cnt}/3`}</span>
+          </div>
+        `;
+      }).join("");
+
+      let filterHtml = `<button class="filter-pill ${viewFilter === "all" ? "active" : ""}" onclick="setFilter('all')">전체 4명 보기</button>`;
+      state.members.forEach((name, idx) => {
+        filterHtml += `<button class="filter-pill ${viewFilter === String(idx) ? "active" : ""}" onclick="setFilter('${idx}')">${esc(name)}만 보기</button>`;
+      });
+      document.getElementById("filterBar").innerHTML = filterHtml;
+
+      const grid = document.getElementById("cardsGrid");
+      const indices = viewFilter === "all" ? [0, 1, 2, 3] : [Number(viewFilter)];
+      grid.classList.toggle("single", indices.length === 1);
+
+      grid.innerHTML = indices.map(idx => {
+        const name = state.members[idx];
+        const rec = getRec(currentDateKey, idx);
+        const stats = getStats(idx);
+        const doneCnt = (rec.prayer ? 1 : 0) + (rec.meditation ? 1 : 0) + (rec.study ? 1 : 0);
+        const allDone = doneCnt === 3;
+
+        const tasksHtml = TASKS.map(t => {
+          const on = rec[t.key];
+          return `
+            <button type="button" class="task-btn ${on ? "checked" : ""}" data-task="${t.key}" onclick="toggleTask(${idx}, '${t.key}')">
+              <div class="task-left">
+                <div class="task-icon">${t.icon}</div>
+                <div>
+                  <span class="task-title">${t.title}</span>
+                  <span class="task-sub">${t.sub}</span>
+                </div>
+              </div>
+              <div class="check-circle">✓</div>
+            </button>
+          `;
+        }).join("");
+
+        return `
+          <div class="member-card ${allDone ? "all-done" : ""}">
+            <div class="card-head">
+              <div class="profile">
+                <div class="avatar av-${idx}">${esc(name.slice(0, 1))}</div>
+                <div class="name-wrap">
+                  <span class="member-name">${esc(name)}</span>
+                  <button class="edit-name-btn" onclick="openNameModal(${idx})" title="이름 수정">✎</button>
+                </div>
+              </div>
+              <span class="status-tag ${allDone ? "done" : ""}">${allDone ? "오늘 완료 ✓" : `${doneCnt} / 3`}</span>
+            </div>
+            <div class="task-list">${tasksHtml}</div>
+            <div class="stats-row">
+              <div class="stat-pill p"><span>기도</span><strong>${stats.p}</strong></div>
+              <div class="stat-pill m"><span>묵상</span><strong>${stats.m}</strong></div>
+              <div class="stat-pill s"><span>학습</span><strong>${stats.s}</strong></div>
+              <div class="stat-pill a"><span>올클</span><strong>${stats.a}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function moveMonth(delta) {
+      calMonth += delta;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendar();
+    }
+    function goThisMonth() {
+      const now = new Date();
+      calYear = now.getFullYear();
+      calMonth = now.getMonth();
+      selectedCalDate = getDateKey(now);
+      renderCalendar();
+    }
+    function selectCalDate(key) { selectedCalDate = key; renderCalendar(); }
+    function jumpToDate(key) { currentDateKey = key; switchTab("check"); renderCheckTab(); }
+
+    function renderCalendar() {
+      document.getElementById("calTitle").textContent = `${calYear}년 ${calMonth + 1}월`;
+      const firstDay = new Date(calYear, calMonth, 1).getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const prefix = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-`;
+
+      let monthClear = 0, totalClear = 0;
+      Object.keys(state.records).forEach(k => {
+        if (getDayCount(k) === 12) {
+          totalClear++;
+          if (k.startsWith(prefix)) monthClear++;
+        }
+      });
+      document.getElementById("monthClearBadge").textContent = `이번 달 전원 완료 ${monthClear}일`;
+      document.getElementById("totalClearBadge").textContent = `누적 전원 완료 ${totalClear}일`;
+
+      const wds = ["일", "월", "화", "수", "목", "금", "토"];
+      let html = wds.map(w => `<div class="cal-wd">${w}</div>`).join("");
+      for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell empty"></div>`;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${prefix}${String(d).padStart(2, "0")}`;
+        const cnt = getDayCount(key);
+        const clear = cnt === 12;
+        let cls = "cal-cell";
+        if (key === todayKey) cls += " today";
+        if (key === selectedCalDate) cls += " selected";
+        if (clear) cls += " all-clear";
+        let tag = clear ? `<span class="cal-clear-tag">👑 전원</span>` : (cnt > 0 ? `<span class="cal-part-tag">${cnt}/12</span>` : "");
+
+        html += `
+          <div class="${cls}" onclick="selectCalDate('${key}')">
+            <span class="cal-day-num">${d}</span>
+            ${tag}
+          </div>
+        `;
+      }
+      document.getElementById("calGrid").innerHTML = html;
+
+      const selCnt = getDayCount(selectedCalDate);
+      const detailItems = state.members.map((name, idx) => {
+        const r = getRec(selectedCalDate, idx);
+        return `
+          <div class="detail-card">
+            <strong>${esc(name)}</strong>
+            <div class="detail-chips">
+              <span class="d-chip p ${r.prayer ? "on" : ""}">기도</span>
+              <span class="d-chip m ${r.meditation ? "on" : ""}">묵상</span>
+              <span class="d-chip s ${r.study ? "on" : ""}">학습</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("calDetail").innerHTML = `
+        <div class="cal-detail-head">
+          <span class="cal-detail-title">📌 ${selectedCalDate} · ${selCnt === 12 ? "전원 완료!" : `${selCnt} / 12 완료`}</span>
+          <button class="today-btn" onclick="jumpToDate('${selectedCalDate}')">이 날짜 체크하기</button>
+        </div>
+        <div class="detail-list">${detailItems}</div>
+      `;
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    }
+
+    function renderAll() {
+      renderCheckTab();
+      renderCalendar();
+    }
+
+    // 이전에 입장한 기기라면 잠금화면 없이 바로 열기
+    const savedHash = localStorage.getItem(SAVED_ROOM_HASH_KEY);
+    if (savedHash) {
+      enterRoom(savedHash);
+    }
+  </script>
+</body>
+</html>
